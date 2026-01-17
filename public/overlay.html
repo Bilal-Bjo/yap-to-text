@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      background: transparent;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .pill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 28px;
+      padding: 0 12px;
+      background: #000;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .label {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.9);
+      white-space: nowrap;
+    }
+    /* Recording */
+    .pill.recording .dot {
+      background: #ef4444;
+      animation: pulse 1s ease-in-out infinite;
+    }
+    .pill.recording .label::after { content: 'Recording'; }
+    /* Processing */
+    .pill.processing .dot {
+      width: 10px;
+      height: 10px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #22d3ee;
+      background: transparent;
+      animation: spin 0.6s linear infinite;
+    }
+    .pill.processing .label::after { content: 'Processing'; }
+    /* Done */
+    .pill.done .dot {
+      background: #22c55e;
+    }
+    .pill.done .label::after { content: 'Copied'; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="pill" class="pill recording">
+    <div class="dot"></div>
+    <span class="label"></span>
+  </div>
+  <script>
+    if (window.__TAURI__) {
+      window.__TAURI__.event.listen('overlay-state', (e) => {
+        document.getElementById('pill').className = 'pill ' + e.payload;
+      });
+    }
+  </script>
+</body>
+</html>
