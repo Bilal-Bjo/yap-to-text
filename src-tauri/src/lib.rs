@@ -141,6 +141,17 @@ fn copy_to_clipboard(text: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn simulate_paste() -> Result<(), String> {
+    // Use AppleScript to simulate Cmd+V
+    std::process::Command::new("osascript")
+        .arg("-e")
+        .arg("tell application \"System Events\" to keystroke \"v\" using command down")
+        .output()
+        .map_err(|e| format!("Failed to simulate paste: {}", e))?;
+    Ok(())
+}
+
 // ============ Global Hotkey Commands ============
 
 #[tauri::command]
@@ -488,6 +499,7 @@ pub fn run() {
             get_recommended_ollama_models,
             // Clipboard
             copy_to_clipboard,
+            simulate_paste,
             // Hotkeys
             register_hotkey,
             unregister_all_hotkeys,

@@ -167,7 +167,6 @@ function App() {
       setStatus("transcribing");
       await invoke("set_overlay_state", { overlayState: "processing" });
       const wavData = await invoke<number[]>("stop_recording");
-      setStatus("cleaning");
       const transcription = await invoke<TranscribeResult>("transcribe_and_cleanup", {
         wavData: Array.from(wavData),
       });
@@ -178,10 +177,11 @@ function App() {
       await invoke("add_recent_transcript", { text: finalText });
       await invoke("set_overlay_state", { overlayState: "done" });
       setStatus("ready");
-      // Hide overlay after showing done state
+      // Hide overlay and auto-paste
       setTimeout(async () => {
         await invoke("hide_overlay");
-      }, 1200);
+        await invoke("simulate_paste");
+      }, 500);
     } catch (e) {
       setError(`${e}`);
       setStatus("idle");
