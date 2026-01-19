@@ -12,6 +12,13 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
+#[cfg(target_os = "macos")]
+use cocoa::appkit::NSWindowCollectionBehavior;
+#[cfg(target_os = "macos")]
+use cocoa::base::id;
+#[cfg(target_os = "macos")]
+use objc::{msg_send, sel, sel_impl};
+
 // Global state - all types must be Send + Sync
 struct AppState {
     recording_state: audio::RecordingState,
@@ -241,6 +248,25 @@ fn show_overlay(app: AppHandle, overlay_state: String) -> Result<(), String> {
             let y = (screen_size.height as f64 - window_height - (100.0 * scale)) as i32; // 100px from bottom
             let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
         }
+
+        // Set window level to show above fullscreen apps on macOS
+        #[cfg(target_os = "macos")]
+        {
+            if let Ok(ns_window) = window.ns_window() {
+                unsafe {
+                    let ns_window = ns_window as id;
+                    // Use screen saver window level (1000) to show above fullscreen
+                    let _: () = msg_send![ns_window, setLevel: 1000_i64];
+                    // Allow window to appear on all spaces including fullscreen
+                    let _: () = msg_send![ns_window, setCollectionBehavior:
+                        NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces |
+                        NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary |
+                        NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
+                    ];
+                }
+            }
+        }
+
         let _ = window.show();
     }
     Ok(())

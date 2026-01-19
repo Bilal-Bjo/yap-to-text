@@ -33,7 +33,8 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "visible": false,
-        "focus": false
+        "focus": false,
+        "visibleOnAllWorkspaces": true
       }
     ],
     "security": {
