@@ -1,10 +1,10 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
+use crate::modes::TranscriptionMode;
+
 const OLLAMA_API_URL: &str = "http://localhost:11434/api/generate";
 const DEFAULT_MODEL: &str = "gemma2:2b";
-
-const SYSTEM_PROMPT: &str = r#"You are a transcript cleaner that NEVER translates. You clean up speech transcripts by removing filler words and fixing grammar while keeping the EXACT SAME LANGUAGE as the input. If input is French, output French. If input is Spanish, output Spanish. If input is English, output English. NEVER change the language. Output ONLY the cleaned text."#;
 
 #[derive(Debug, Serialize)]
 struct OllamaRequest {
@@ -70,8 +70,8 @@ impl OllamaClient {
         }
     }
 
-    /// Clean up the transcript using Ollama
-    pub async fn cleanup_text(&self, text: &str, language: Option<&str>) -> Result<String, String> {
+    /// Clean up the transcript using Ollama with the specified mode
+    pub async fn cleanup_text(&self, text: &str, language: Option<&str>, mode: &str) -> Result<String, String> {
         if !self.enabled {
             return Ok(text.to_string());
         }
@@ -79,6 +79,8 @@ impl OllamaClient {
         if text.trim().is_empty() {
             return Ok(text.to_string());
         }
+
+        let transcription_mode = TranscriptionMode::from_str(mode);
 
         // Build a prompt that explicitly states the language
         let lang_name = language.map(|l| match l {
@@ -97,15 +99,43 @@ impl OllamaClient {
             _ => l,
         }).unwrap_or("the same language");
 
-        let prompt = format!(
-            "Clean this {} transcript (keep in {}, do NOT translate):\n\n{}",
-            lang_name, lang_name, text
-        );
+        let system_prompt = transcription_mode.get_system_prompt(lang_name);
+
+        let prompt = match transcription_mode {
+            TranscriptionMode::Default => format!(
+                "Clean this {} transcript (keep in {}, do NOT translate):\n\n{}",
+                lang_name, lang_name, text
+            ),
+            TranscriptionMode::Email => format!(
+                "Format this {} transcript as a professional email (keep in {}):\n\n{}",
+                lang_name, lang_name, text
+            ),
+            TranscriptionMode::Bullets => format!(
+                "Convert this {} transcript to bullet points (keep in {}):\n\n{}",
+                lang_name, lang_name, text
+            ),
+            TranscriptionMode::Summary => format!(
+                "Summarize this {} transcript (keep in {}):\n\n{}",
+                lang_name, lang_name, text
+            ),
+            TranscriptionMode::Slack => format!(
+                "Convert this {} transcript to a casual chat message (keep in {}):\n\n{}",
+                lang_name, lang_name, text
+            ),
+            TranscriptionMode::MeetingNotes => format!(
+                "Format this {} transcript as meeting notes (keep in {}):\n\n{}",
+                lang_name, lang_name, text
+            ),
+            TranscriptionMode::CodeComment => format!(
+                "Format this {} transcript as a code comment (keep in {}):\n\n{}",
+                lang_name, lang_name, text
+            ),
+        };
 
         let request = OllamaRequest {
             model: self.model.clone(),
             prompt,
-            system: SYSTEM_PROMPT.to_string(),
+            system: system_prompt,
             stream: false,
             context: Some(vec![]), // Empty context = no history
         };

@@ -6,79 +6,222 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
-      background: transparent;
+      background: transparent !important;
       overflow: hidden;
       width: 100%;
       height: 100%;
       -webkit-user-select: none;
       user-select: none;
     }
+    .container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent !important;
+    }
     .pill {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 28px;
-      padding: 0 12px;
-      background: #000;
+      width: 200px;
+      height: 52px;
+      padding: 0 16px 0 12px;
+      background: rgba(0, 0, 0, 0.88);
       border-radius: 14px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     }
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
+
+    /* Mode icon container with gradient background */
+    .mode-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    .label {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      font-size: 12px;
-      font-weight: 500;
-      color: rgba(255,255,255,0.9);
+    .mode-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke: white;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    /* Mode colors - clean gradients */
+    .mode-icon.default { background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%); }
+    .mode-icon.email { background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%); }
+    .mode-icon.bullets { background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%); }
+    .mode-icon.summary { background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%); }
+    .mode-icon.slack { background: linear-gradient(135deg, #f472b6 0%, #db2777 100%); }
+    .mode-icon.meeting_notes { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); }
+    .mode-icon.code_comment { background: linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%); }
+
+    /* Mode label */
+    .mode-label {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: white;
       white-space: nowrap;
+      letter-spacing: -0.01em;
+      min-width: 50px;
     }
-    /* Recording */
-    .pill.recording .dot {
-      background: #ef4444;
-      animation: pulse 1s ease-in-out infinite;
+
+    /* Waveform */
+    .waveform {
+      display: none;
+      align-items: flex-end;
+      gap: 3px;
+      height: 20px;
+      margin-left: 4px;
     }
-    .pill.recording .label::after { content: 'Recording'; }
-    /* Processing */
-    .pill.processing .dot {
-      width: 10px;
-      height: 10px;
-      border: 2px solid rgba(255,255,255,0.2);
-      border-top-color: #22d3ee;
-      background: transparent;
+    .waveform .bar {
+      width: 4px;
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 2px;
+      animation: wave 0.6s ease-in-out infinite;
+    }
+    .waveform .bar:nth-child(1) { height: 6px; animation-delay: 0s; }
+    .waveform .bar:nth-child(2) { height: 14px; animation-delay: 0.08s; }
+    .waveform .bar:nth-child(3) { height: 10px; animation-delay: 0.16s; }
+    .waveform .bar:nth-child(4) { height: 18px; animation-delay: 0.24s; }
+    .waveform .bar:nth-child(5) { height: 8px; animation-delay: 0.32s; }
+
+    /* Spinner */
+    .spinner {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: white;
+      border-radius: 50%;
       animation: spin 0.6s linear infinite;
+      margin-left: 4px;
     }
-    .pill.processing .label::after { content: 'Processing'; }
-    /* Done */
-    .pill.done .dot {
-      background: #22c55e;
+
+    /* Checkmark */
+    .checkmark {
+      display: none;
+      width: 18px;
+      height: 18px;
+      margin-left: 4px;
     }
-    .pill.done .label::after { content: 'Copied'; }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+    .checkmark svg {
+      width: 100%;
+      height: 100%;
+      fill: none;
+      stroke: #4ade80;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .checkmark svg path {
+      stroke-dasharray: 24;
+      stroke-dashoffset: 24;
+      animation: checkDraw 0.25s ease forwards;
+    }
+
+    /* States */
+    .pill.recording .waveform { display: flex; }
+    .pill.processing .spinner { display: block; }
+    .pill.generating .spinner { display: block; }
+    .pill.done .checkmark { display: block; }
+
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.4); }
+      50% { transform: scaleY(1); }
     }
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+    @keyframes checkDraw {
+      to { stroke-dashoffset: 0; }
+    }
   </style>
 </head>
 <body>
-  <div id="pill" class="pill recording">
-    <div class="dot"></div>
-    <span class="label"></span>
+  <div class="container">
+    <div id="pill" class="pill recording">
+      <div id="mode-icon" class="mode-icon default">
+        <svg id="icon-svg" viewBox="0 0 24 24"></svg>
+      </div>
+      <span id="mode-label" class="mode-label">Default</span>
+      <div class="waveform">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+      </div>
+      <div class="spinner"></div>
+      <div class="checkmark">
+        <svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg>
+      </div>
+    </div>
   </div>
   <script>
-    if (window.__TAURI__) {
+    const modeNames = {
+      'default': 'Default',
+      'email': 'Email',
+      'bullets': 'Bullets',
+      'summary': 'Summary',
+      'slack': 'Slack',
+      'meeting_notes': 'Meeting',
+      'code_comment': 'Code'
+    };
+
+    // SVG icon paths for each mode
+    const modeIcons = {
+      'default': '<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/>',
+      'email': '<path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>',
+      'bullets': '<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/>',
+      'summary': '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>',
+      'slack': '<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/>',
+      'meeting_notes': '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z"/>',
+      'code_comment': '<path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"/>'
+    };
+
+    // Global function to update mode (called from Rust via eval)
+    window.updateMode = function(mode) {
+      const iconContainer = document.getElementById('mode-icon');
+      const iconSvg = document.getElementById('icon-svg');
+      const label = document.getElementById('mode-label');
+      if (iconContainer) iconContainer.className = 'mode-icon ' + mode;
+      if (iconSvg) iconSvg.innerHTML = modeIcons[mode] || modeIcons['default'];
+      if (label) label.textContent = modeNames[mode] || 'Default';
+    };
+
+    // Global function to update state (called from Rust via eval)
+    window.updateState = function(state) {
+      const pill = document.getElementById('pill');
+      if (pill) pill.className = 'pill ' + state;
+    };
+
+    // Also set up Tauri event listeners as backup
+    function initTauri() {
+      if (!window.__TAURI__) {
+        setTimeout(initTauri, 100);
+        return;
+      }
+
       window.__TAURI__.event.listen('overlay-state', (e) => {
-        document.getElementById('pill').className = 'pill ' + e.payload;
+        window.updateState(e.payload);
       });
+
+      window.__TAURI__.event.listen('overlay-mode', (e) => {
+        window.updateMode(e.payload);
+      });
+
+      window.__TAURI__.core.invoke('get_overlay_mode').then((mode) => {
+        window.updateMode(mode);
+      }).catch(() => {});
     }
+
+    initTauri();
   </script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 mod audio;
+mod modes;
 mod ollama;
 mod whisper;
 
@@ -13,9 +14,9 @@ use tauri::{
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 #[cfg(target_os = "macos")]
-use cocoa::appkit::NSWindowCollectionBehavior;
+use cocoa::appkit::{NSColor, NSWindowCollectionBehavior};
 #[cfg(target_os = "macos")]
-use cocoa::base::id;
+use cocoa::base::{id, nil};
 #[cfg(target_os = "macos")]
 use objc::{msg_send, sel, sel_impl};
 
@@ -25,6 +26,8 @@ struct AppState {
     whisper: Mutex<Option<whisper::WhisperTranscriber>>,
     ollama: Mutex<ollama::OllamaClient>,
     recent_transcripts: Mutex<Vec<String>>,
+    current_mode: Mutex<String>,
+    overlay_mode: Mutex<String>,
 }
 
 // ============ Audio Commands ============
@@ -109,12 +112,13 @@ fn get_available_whisper_models() -> Vec<(String, String, u64)> {
 // ============ Ollama Commands ============
 
 #[tauri::command]
-async fn cleanup_text(text: String, language: Option<String>, state: State<'_, AppState>) -> Result<String, String> {
-    let ollama = {
+async fn cleanup_text(text: String, language: Option<String>, mode: Option<String>, state: State<'_, AppState>) -> Result<String, String> {
+    let (ollama, current_mode) = {
         let guard = state.ollama.lock().unwrap();
-        guard.clone()
+        let mode_guard = state.current_mode.lock().unwrap();
+        (guard.clone(), mode.unwrap_or_else(|| mode_guard.clone()))
     };
-    ollama.cleanup_text(&text, language.as_deref()).await
+    ollama.cleanup_text(&text, language.as_deref(), &current_mode).await
 }
 
 #[tauri::command]
@@ -150,6 +154,25 @@ fn get_recommended_ollama_models() -> Vec<(String, String)> {
         .into_iter()
         .map(|(name, desc)| (name.to_string(), desc.to_string()))
         .collect()
+}
+
+// ============ Mode Commands ============
+
+#[tauri::command]
+fn set_mode(mode: String, state: State<'_, AppState>) {
+    let mut current = state.current_mode.lock().unwrap();
+    *current = mode;
+}
+
+#[tauri::command]
+fn get_mode(state: State<'_, AppState>) -> String {
+    let current = state.current_mode.lock().unwrap();
+    current.clone()
+}
+
+#[tauri::command]
+fn get_available_modes() -> Vec<modes::ModeInfo> {
+    modes::get_available_modes()
 }
 
 // ============ Clipboard Commands ============
@@ -193,31 +216,48 @@ fn register_hotkey(app: AppHandle, key: String, modifiers: Vec<String>) -> Resul
         }
     }
 
-    // Parse key code
-    let code = match key.to_lowercase().as_str() {
-        "a" => Code::KeyA, "b" => Code::KeyB, "c" => Code::KeyC, "d" => Code::KeyD,
-        "e" => Code::KeyE, "f" => Code::KeyF, "g" => Code::KeyG, "h" => Code::KeyH,
-        "i" => Code::KeyI, "j" => Code::KeyJ, "k" => Code::KeyK, "l" => Code::KeyL,
-        "m" => Code::KeyM, "n" => Code::KeyN, "o" => Code::KeyO, "p" => Code::KeyP,
-        "q" => Code::KeyQ, "r" => Code::KeyR, "s" => Code::KeyS, "t" => Code::KeyT,
-        "u" => Code::KeyU, "v" => Code::KeyV, "w" => Code::KeyW, "x" => Code::KeyX,
-        "y" => Code::KeyY, "z" => Code::KeyZ,
-        "space" => Code::Space,
-        "enter" | "return" => Code::Enter,
-        "escape" | "esc" => Code::Escape,
-        "backspace" => Code::Backspace,
-        "tab" => Code::Tab,
-        "f1" => Code::F1, "f2" => Code::F2, "f3" => Code::F3, "f4" => Code::F4,
-        "f5" => Code::F5, "f6" => Code::F6, "f7" => Code::F7, "f8" => Code::F8,
-        "f9" => Code::F9, "f10" => Code::F10, "f11" => Code::F11, "f12" => Code::F12,
-        _ => return Err(format!("Unknown key: {}", key)),
+    // Parse key code (case-sensitive for special keys like MetaRight)
+    let code = match key.as_str() {
+        // Right-side modifier keys (as primary keys)
+        "MetaRight" => Code::MetaRight,
+        "MetaLeft" => Code::MetaLeft,
+        "ShiftRight" => Code::ShiftRight,
+        "ShiftLeft" => Code::ShiftLeft,
+        "AltRight" => Code::AltRight,
+        "AltLeft" => Code::AltLeft,
+        "ControlRight" => Code::ControlRight,
+        "ControlLeft" => Code::ControlLeft,
+        // Standard keys (case-insensitive)
+        _ => match key.to_lowercase().as_str() {
+            "a" => Code::KeyA, "b" => Code::KeyB, "c" => Code::KeyC, "d" => Code::KeyD,
+            "e" => Code::KeyE, "f" => Code::KeyF, "g" => Code::KeyG, "h" => Code::KeyH,
+            "i" => Code::KeyI, "j" => Code::KeyJ, "k" => Code::KeyK, "l" => Code::KeyL,
+            "m" => Code::KeyM, "n" => Code::KeyN, "o" => Code::KeyO, "p" => Code::KeyP,
+            "q" => Code::KeyQ, "r" => Code::KeyR, "s" => Code::KeyS, "t" => Code::KeyT,
+            "u" => Code::KeyU, "v" => Code::KeyV, "w" => Code::KeyW, "x" => Code::KeyX,
+            "y" => Code::KeyY, "z" => Code::KeyZ,
+            "space" => Code::Space,
+            "enter" | "return" => Code::Enter,
+            "escape" | "esc" => Code::Escape,
+            "backspace" => Code::Backspace,
+            "tab" => Code::Tab,
+            "f1" => Code::F1, "f2" => Code::F2, "f3" => Code::F3, "f4" => Code::F4,
+            "f5" => Code::F5, "f6" => Code::F6, "f7" => Code::F7, "f8" => Code::F8,
+            "f9" => Code::F9, "f10" => Code::F10, "f11" => Code::F11, "f12" => Code::F12,
+            _ => return Err(format!("Unknown key: {}", key)),
+        }
     };
 
-    let shortcut = Shortcut::new(Some(mods), code);
+    // Use None for modifiers if empty, Some otherwise
+    let shortcut = if mods.is_empty() {
+        Shortcut::new(None, code)
+    } else {
+        Shortcut::new(Some(mods), code)
+    };
 
     app.global_shortcut()
         .register(shortcut)
-        .map_err(|e| format!("Failed to register hotkey: {}", e))?;
+        .map_err(|e| format!("Failed to register hotkey: {}. Note: Modifier keys alone (like Right Command) may not work as global shortcuts on macOS.", e))?;
 
     Ok(())
 }
@@ -233,23 +273,29 @@ fn unregister_all_hotkeys(app: AppHandle) -> Result<(), String> {
 // ============ Overlay Commands ============
 
 #[tauri::command]
-fn show_overlay(app: AppHandle, overlay_state: String) -> Result<(), String> {
+fn show_overlay(app: AppHandle, overlay_state: String, mode: Option<String>) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("overlay") {
-        // Set the state
-        let _ = window.emit("overlay-state", &overlay_state);
+        // Directly call JavaScript to update state and mode
+        let js_state = format!("if(typeof updateState === 'function') updateState('{}');", overlay_state);
+        let _ = window.eval(&js_state);
+
+        if let Some(m) = &mode {
+            let js_mode = format!("if(typeof updateMode === 'function') updateMode('{}');", m);
+            let _ = window.eval(&js_mode);
+        }
 
         // Position at bottom center of screen
         if let Ok(Some(monitor)) = window.primary_monitor() {
             let screen_size = monitor.size();
             let scale = monitor.scale_factor();
-            let window_width = 110.0 * scale;
-            let window_height = 28.0 * scale;
+            let window_width = 240.0 * scale;
+            let window_height = 68.0 * scale;
             let x = ((screen_size.width as f64 - window_width) / 2.0) as i32;
-            let y = (screen_size.height as f64 - window_height - (100.0 * scale)) as i32; // 100px from bottom
+            let y = (screen_size.height as f64 - window_height - (80.0 * scale)) as i32; // 80px from bottom
             let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
         }
 
-        // Set window level to show above fullscreen apps on macOS
+        // Set window level and transparent background on macOS
         #[cfg(target_os = "macos")]
         {
             if let Ok(ns_window) = window.ns_window() {
@@ -263,6 +309,10 @@ fn show_overlay(app: AppHandle, overlay_state: String) -> Result<(), String> {
                         NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary |
                         NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
                     ];
+                    // Make window background fully transparent
+                    let _: () = msg_send![ns_window, setOpaque: false];
+                    let _: () = msg_send![ns_window, setBackgroundColor: NSColor::clearColor(nil)];
+                    let _: () = msg_send![ns_window, setHasShadow: false];
                 }
             }
         }
@@ -282,10 +332,33 @@ fn hide_overlay(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 fn set_overlay_state(app: AppHandle, overlay_state: String) -> Result<(), String> {
+    // Directly call JavaScript
     if let Some(window) = app.get_webview_window("overlay") {
-        let _ = window.emit("overlay-state", &overlay_state);
+        let js = format!("if(typeof updateState === 'function') updateState('{}');", overlay_state);
+        let _ = window.eval(&js);
     }
     Ok(())
+}
+
+#[tauri::command]
+fn set_overlay_mode(app: AppHandle, mode: String, state: State<'_, AppState>) -> Result<(), String> {
+    // Store mode in state
+    {
+        let mut overlay_mode = state.overlay_mode.lock().unwrap();
+        *overlay_mode = mode.clone();
+    }
+    // Directly call JavaScript in the overlay window
+    if let Some(window) = app.get_webview_window("overlay") {
+        let js = format!("if(typeof updateMode === 'function') updateMode('{}');", mode);
+        let _ = window.eval(&js);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn get_overlay_mode(state: State<'_, AppState>) -> String {
+    let mode = state.overlay_mode.lock().unwrap();
+    mode.clone()
 }
 
 // ============ Tray Menu Commands ============
@@ -369,6 +442,7 @@ fn update_tray_menu(app: &AppHandle, state: &State<'_, AppState>) -> Result<(), 
 #[tauri::command]
 async fn transcribe_and_cleanup(
     wav_data: Vec<u8>,
+    mode: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<TranscribeResult, String> {
     // Check if we have audio data
@@ -400,6 +474,12 @@ async fn transcribe_and_cleanup(
         return Err("Could not transcribe audio. Try speaking louder or longer.".to_string());
     }
 
+    // Get the mode to use (from parameter or state)
+    let current_mode = {
+        let mode_guard = state.current_mode.lock().unwrap();
+        mode.unwrap_or_else(|| mode_guard.clone())
+    };
+
     // Then cleanup with Ollama if enabled
     let (ollama_enabled, ollama_client) = {
         let ollama = state.ollama.lock().unwrap();
@@ -409,7 +489,7 @@ async fn transcribe_and_cleanup(
     let language = &transcription.language;
 
     let cleaned_text = if ollama_enabled && raw_text.len() > 3 {
-        match ollama_client.cleanup_text(raw_text, Some(language)).await {
+        match ollama_client.cleanup_text(raw_text, Some(language), &current_mode).await {
             Ok(cleaned) => {
                 // If Ollama returns something that looks like an error/instruction, use raw text
                 if cleaned.contains("provide") && cleaned.contains("transcript") {
@@ -470,6 +550,8 @@ pub fn run() {
             whisper: Mutex::new(None),
             ollama: Mutex::new(ollama::OllamaClient::new()),
             recent_transcripts: Mutex::new(Vec::new()),
+            current_mode: Mutex::new("default".to_string()),
+            overlay_mode: Mutex::new("default".to_string()),
         })
         .setup(|app| {
             // Create tray icon with menu
@@ -541,6 +623,10 @@ pub fn run() {
             is_ollama_enabled,
             set_ollama_model,
             get_recommended_ollama_models,
+            // Modes
+            set_mode,
+            get_mode,
+            get_available_modes,
             // Clipboard
             copy_to_clipboard,
             simulate_paste,
@@ -551,6 +637,8 @@ pub fn run() {
             show_overlay,
             hide_overlay,
             set_overlay_state,
+            set_overlay_mode,
+            get_overlay_mode,
             // Tray
             add_recent_transcript,
             // Combined
