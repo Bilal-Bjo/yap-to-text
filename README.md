@@ -23,13 +23,22 @@ You know how you have brilliant thoughts in the shower but forget them by the ti
 
 - 🎙️ **Hold-to-record** — Press your hotkey, speak, release. That's it. Even your cat could do it.
 - 🧠 **AI cleanup** — Removes your "umms", "uhhs", and "like, you know" moments (we all have them)
+- 🎨 **7 Output Modes** — Transform your speech into different formats:
+  - **Default** — Clean up grammar and filler words
+  - **Email** — Format as a professional email
+  - **Bullets** — Convert to organized bullet points
+  - **Summary** — Condense into a brief summary
+  - **Slack** — Short, casual chat message
+  - **Meeting Notes** — Structure with key points and action items
+  - **Code Comment** — Format as code documentation
 - 🌍 **99+ languages** — Parlez-vous français? Sprechen Sie Deutsch? 日本語? We got you.
 - 🔒 **100% offline** — Your voice stays on your Mac. The NSA will have to find another hobby.
-- 📋 **Auto-copy to clipboard** — Text is ready to paste faster than you can say "productivity"
-- 🖥️ **Sleek overlay** — A tiny indicator shows recording status, Wispr Flow style
+- 📋 **Auto-copy & paste** — Text is copied and auto-pasted faster than you can blink
+- 🖥️ **Sleek overlay** — Shows mode, animated waveform, and status at the bottom of your screen
 - 📌 **Menu bar app** — Lives quietly in your menu bar, ready when you need it
 - 🎚️ **Microphone selection** — Choose your input device from settings, no more "wrong mic" moments
 - 📜 **Persistent history** — Your transcripts survive app restarts, because memory shouldn't be optional
+- 📊 **Session stats** — Track your transcription count and word count
 
 ---
 
@@ -129,16 +138,18 @@ Check the [Releases](https://github.com/Bilal-Bjo/yap-to-text/releases) page and
    /Users/YOUR_USERNAME/Library/Application Support/yap-to-text/models/ggml-base.bin
    ```
 3. **Select your microphone** — Choose your preferred input device from the dropdown (or leave as "System Default")
-4. **Set your hotkey** — Default is `⌘⇧Space`, but you do you
-5. **(Optional) Start Ollama** — Run `ollama serve` in a terminal for AI cleanup
+4. **Choose your output mode** — Pick from 7 different modes in the visual card grid
+5. **Set your hotkey** — Default is `⌘⇧Space`, but you do you
+6. **(Optional) Start Ollama** — Run `ollama serve` in a terminal for AI cleanup and modes
 
 ### Daily Usage
 
-1. **Hold your hotkey** — A sleek black pill appears at the bottom of your screen
-2. **Talk** — Say whatever's on your mind
-3. **Release** — Watch the magic happen:
-   - 🔴 Recording → ⚙️ Processing → ✅ Copied!
-4. **Paste** — `⌘V` wherever you need it
+1. **Select a mode** — Click a mode card (Email, Bullets, Summary, etc.)
+2. **Hold your hotkey** — A sleek pill overlay appears showing your selected mode
+3. **Talk** — Say whatever's on your mind
+4. **Release** — Watch the magic happen:
+   - 🎤 Recording (waveform animation) → ⚙️ Processing → ✅ Copied & Pasted!
+5. **Done** — Your text is auto-pasted where your cursor is
 
 ### Pro Tips
 
@@ -147,6 +158,8 @@ Check the [Releases](https://github.com/Bilal-Bjo/yap-to-text/releases) page and
 - Your transcript history persists across app restarts — your last result is always there
 - Click the refresh button next to the microphone dropdown if you plug in a new device
 - Works in any language Whisper supports (which is basically all of them)
+- The overlay shows your current mode with a colored icon — no guessing which mode you're in
+- Modes other than Default require Ollama to be running
 
 ---
 
@@ -170,7 +183,8 @@ Check the [Releases](https://github.com/Bilal-Bjo/yap-to-text/releases) page and
                           ▼
 ┌─────────────────────────────────────────────────────────┐
 │                 Ollama (gemma2:2b)                       │
-│    Cleans up filler words, fixes grammar (optional)      │
+│    Transforms text based on selected mode:               │
+│    Email, Bullets, Summary, Slack, Meeting Notes, etc.   │
 │              Still on YOUR machine, paranoid friend      │
 └─────────────────────────┬───────────────────────────────┘
                           ▼
