@@ -37,6 +37,21 @@ fn is_recording(state: State<'_, AppState>) -> bool {
     audio::is_recording(&state.recording_state)
 }
 
+#[tauri::command]
+fn get_input_devices() -> Vec<audio::AudioDevice> {
+    audio::get_input_devices()
+}
+
+#[tauri::command]
+fn set_input_device(device_id: Option<String>, state: State<'_, AppState>) {
+    audio::set_input_device(&state.recording_state, device_id);
+}
+
+#[tauri::command]
+fn get_selected_device(state: State<'_, AppState>) -> Option<String> {
+    audio::get_selected_device(&state.recording_state)
+}
+
 // ============ Whisper Commands ============
 
 #[tauri::command]
@@ -484,6 +499,9 @@ pub fn run() {
             start_recording,
             stop_recording,
             is_recording,
+            get_input_devices,
+            set_input_device,
+            get_selected_device,
             // Whisper
             load_whisper_model,
             transcribe_audio,

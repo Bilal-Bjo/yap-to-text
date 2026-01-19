@@ -8,6 +8,11 @@ interface TranscribeResult {
   language: string;
 }
 
+interface AudioDevice {
+  id: string;
+  name: string;
+}
+
 type AppStatus = "idle" | "recording" | "transcribing" | "cleaning" | "ready";
 
 interface HotkeyConfig {
@@ -26,16 +31,33 @@ function App() {
   const [aiCleanupEnabled, setAiCleanupEnabled] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [modelPath, setModelPath] = useState("");
-  const [history, setHistory] = useState<TranscribeResult[]>([]);
+  const [history, setHistory] = useState<TranscribeResult[]>(() => {
+    const saved = localStorage.getItem("yap-history");
+    if (saved) { try { return JSON.parse(saved); } catch { return []; } }
+    return [];
+  });
+  const [initialHistoryLoaded, setInitialHistoryLoaded] = useState(false);
   const [hotkey, setHotkey] = useState<HotkeyConfig>(DEFAULT_HOTKEY);
   const [isCapturingHotkey, setIsCapturingHotkey] = useState(false);
   const [hotkeyEnabled, setHotkeyEnabled] = useState(true);
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
+  const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
+  const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const statusRef = useRef(status);
   const isModelLoadedRef = useRef(isModelLoaded);
 
   useEffect(() => { statusRef.current = status; }, [status]);
   useEffect(() => { isModelLoadedRef.current = isModelLoaded; }, [isModelLoaded]);
+  useEffect(() => {
+    if (history.length > 0) localStorage.setItem("yap-history", JSON.stringify(history));
+  }, [history]);
+  useEffect(() => {
+    // Restore last result from history on mount
+    if (!initialHistoryLoaded && history.length > 0) {
+      setResult(history[0]);
+      setInitialHistoryLoaded(true);
+    }
+  }, [history, initialHistoryLoaded]);
 
   useEffect(() => {
     checkWhisperStatus();
@@ -43,6 +65,7 @@ function App() {
     getModelsDir();
     loadSavedHotkey();
     loadAutoStartSetting();
+    loadAudioDevices();
     autoLoadModel();
   }, []);
 
@@ -71,6 +94,31 @@ function App() {
       else await invoke("plugin:autostart|enable");
       setAutoStartEnabled(!autoStartEnabled);
     } catch (e) { console.error("Failed to toggle autostart:", e); }
+  };
+
+  const loadAudioDevices = async () => {
+    try {
+      const devices = await invoke<AudioDevice[]>("get_input_devices");
+      setAudioDevices(devices);
+      // Load saved selection from localStorage
+      const savedDevice = localStorage.getItem("yap-selected-microphone");
+      if (savedDevice && devices.some(d => d.id === savedDevice)) {
+        setSelectedDevice(savedDevice);
+        await invoke("set_input_device", { deviceId: savedDevice });
+      }
+    } catch (e) { console.error("Failed to load audio devices:", e); }
+  };
+
+  const handleDeviceSelect = async (deviceId: string | null) => {
+    try {
+      setSelectedDevice(deviceId);
+      await invoke("set_input_device", { deviceId });
+      if (deviceId) {
+        localStorage.setItem("yap-selected-microphone", deviceId);
+      } else {
+        localStorage.removeItem("yap-selected-microphone");
+      }
+    } catch (e) { console.error("Failed to set audio device:", e); }
   };
 
   const getModelsDir = async () => {
@@ -251,7 +299,7 @@ function App() {
 
       {/* Settings Panel - Glass UI */}
       {showSettings && (
-        <div className="absolute top-14 right-4 left-4 z-10">
+        <div className="absolute top-14 right-4 left-4 z-10 max-h-[calc(100vh-80px)] overflow-y-auto">
           <div className="p-5 rounded-2xl bg-white/[0.03] backdrop-blur-2xl border border-white/[0.06] shadow-2xl shadow-black/50">
             {/* Model */}
             <div className="mb-6">
@@ -270,6 +318,35 @@ function App() {
                   className="px-5 py-2.5 bg-white text-black rounded-xl text-[13px] font-semibold hover:bg-white/90 transition-all disabled:opacity-40"
                 >
                   {isModelLoaded ? "Reload" : "Load"}
+                </button>
+              </div>
+            </div>
+
+            {/* Microphone Selection */}
+            <div className="mb-6">
+              <label className="block text-[10px] font-medium uppercase tracking-[0.15em] text-white/30 mb-2.5">Microphone</label>
+              <div className="flex gap-2">
+                <select
+                  value={selectedDevice || ""}
+                  onChange={(e) => handleDeviceSelect(e.target.value || null)}
+                  className="flex-1 px-3.5 py-2.5 bg-white/[0.03] border border-white/[0.06] rounded-xl text-[13px] text-white/80 focus:outline-none focus:border-white/20 focus:bg-white/[0.05] transition-all appearance-none cursor-pointer"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(255,255,255,0.4)'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}
+                >
+                  <option value="" className="bg-[#1a1a1a]">System Default</option>
+                  {audioDevices.map((device) => (
+                    <option key={device.id} value={device.id} className="bg-[#1a1a1a]">
+                      {device.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={loadAudioDevices}
+                  className="px-3 py-2.5 bg-white/[0.03] border border-white/[0.06] rounded-xl text-white/40 hover:bg-white/[0.06] hover:text-white/60 transition-all"
+                  title="Refresh devices"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
                 </button>
               </div>
             </div>

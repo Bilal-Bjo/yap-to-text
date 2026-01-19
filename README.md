@@ -28,6 +28,8 @@ You know how you have brilliant thoughts in the shower but forget them by the ti
 - 📋 **Auto-copy to clipboard** — Text is ready to paste faster than you can say "productivity"
 - 🖥️ **Sleek overlay** — A tiny indicator shows recording status, Wispr Flow style
 - 📌 **Menu bar app** — Lives quietly in your menu bar, ready when you need it
+- 🎚️ **Microphone selection** — Choose your input device from settings, no more "wrong mic" moments
+- 📜 **Persistent history** — Your transcripts survive app restarts, because memory shouldn't be optional
 
 ---
 
@@ -126,8 +128,9 @@ Check the [Releases](https://github.com/Bilal-Bjo/yap-to-text/releases) page and
    ```
    /Users/YOUR_USERNAME/Library/Application Support/yap-to-text/models/ggml-base.bin
    ```
-3. **Set your hotkey** — Default is `⌘⇧Space`, but you do you
-4. **(Optional) Start Ollama** — Run `ollama serve` in a terminal for AI cleanup
+3. **Select your microphone** — Choose your preferred input device from the dropdown (or leave as "System Default")
+4. **Set your hotkey** — Default is `⌘⇧Space`, but you do you
+5. **(Optional) Start Ollama** — Run `ollama serve` in a terminal for AI cleanup
 
 ### Daily Usage
 
@@ -141,7 +144,8 @@ Check the [Releases](https://github.com/Bilal-Bjo/yap-to-text/releases) page and
 
 - The app auto-loads your model on startup after the first time
 - Enable "Launch at Login" in settings for maximum laziness
-- Your last 3 transcripts are saved in the menu bar for quick access
+- Your transcript history persists across app restarts — your last result is always there
+- Click the refresh button next to the microphone dropdown if you plug in a new device
 - Works in any language Whisper supports (which is basically all of them)
 
 ---
